@@ -25,6 +25,37 @@ async function run() {
 
 // user collection
     const usersCollection=client.db("resumeBuilderPortal").collection("users")
+    const reviewCollection = client
+    .db("resumeBuilderPortal")
+    .collection("review");
+
+    //user related routes
+
+    app.get("/users", async (req, res) => {
+      const result = await usersCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/users", async (req, res) => {
+      const user = req.body;
+      console.log(user)
+      const query = { email: user?.email };
+      const existingUser = await usersCollection.findOne(query);
+      if (existingUser) {
+        return res.send({ message: "user already exists" });
+      }
+
+      const result = await usersCollection.insertOne(user);
+      res.send(result);
+    });
+
+    //user Reviews
+    app.post("/review", async (req, res) => {
+      const review=req.body
+      const result=await  reviewCollection .insertOne(review)
+      res.send(result)
+    });
+    
 
     // await client.connect();
     // Send a ping to confirm a successful connection
