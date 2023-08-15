@@ -49,7 +49,7 @@ async function run() {
       res.send(result);
     });
 
-    //user Reviews
+    //user Reviews routes
     app.post("/review", async (req, res) => {
       const review=req.body
       const result=await  reviewCollection .insertOne(review)
