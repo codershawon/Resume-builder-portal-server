@@ -96,3 +96,4 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Resume builder portal server is running on port ${port}`);
 });
+
