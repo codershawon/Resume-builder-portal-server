@@ -72,6 +72,13 @@ async function run() {
     });
     app.post("/review", async (req, res) => {
       const review = req.body;
+      console.log(review);
+      const query = { email: review?.email };
+      const existingReview = await reviewCollection.findOne(query);
+      if (existingReview) {
+        return res.send({ message: "user already exists" });
+      }
+
       const result = await reviewCollection.insertOne(review);
       res.send(result);
     });
@@ -96,3 +103,4 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Resume builder portal server is running on port ${port}`);
 });
+
