@@ -35,6 +35,9 @@ async function run() {
     const reviewCollection = client
       .db("resumeBuilderPortal")
       .collection("review");
+    const resumeCollection = client
+      .db("resumeBuilderPortal")
+      .collection("resume");
 
   //jwt
   app.post("/jwt",(req,res)=>{
@@ -73,6 +76,11 @@ async function run() {
     app.post("/review", async (req, res) => {
       const review = req.body;
       const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+
+    app.get("/resume", async (req, res) => {
+      const result = await resumeCollection.find().toArray();
       res.send(result);
     });
 
