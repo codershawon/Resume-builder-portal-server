@@ -120,20 +120,6 @@ async function run() {
         res.send(result);
       });
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     //user Reviews routes
     app.get("/review", async (req, res) => {
       const result = await reviewCollection.find().toArray();
