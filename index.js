@@ -7,7 +7,7 @@ require("dotenv").config();
 const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
-console.log(process.env.ACCESS_TOKEN_SECRET)
+console.log(process.env.ACCESS_TOKEN_SECRET);
 
 
 
@@ -29,8 +29,6 @@ const verifyJWT = (req, res, next) => {
     next();
   });
 };
-
-
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.5abjn4e.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -62,18 +60,20 @@ async function run() {
       .db("resumeBuilderPortal")
       .collection("resume");
 
-  //jwt
-  app.post("/jwt",(req,res)=>{
-    const user=req.body
-    console.log(user)
-    const token=jwt.sign(user,process.env.ACCESS_TOKEN_SECRET,{ expiresIn: "1h" })
-    console.log(token)
-    res.send({token})
-  })
+    //jwt
+    app.post("/jwt", (req, res) => {
+      const user = req.body;
+      console.log(user);
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "1h",
+      });
+      console.log(token);
+      res.send({ token });
+    });
 
     //user related routes
     //  TODO : add verifyJWT
-    app.get("/users",verifyJWT, async (req, res) => {
+    app.get("/users", verifyJWT, async (req, res) => {
       const result = await usersCollection.find().toArray();
       res.send(result);
     });
@@ -91,45 +91,81 @@ async function run() {
       res.send(result);
     });
 
+    //admin
+    //  TODO : add verifyJWT
+    app.get("/users/admin/:email", verifyJWT, async (req, res) => {
+      const email = req.params.email;
+      if (req.decoded?.email !== email) {
+        res.send({ admin: false });
+        return;
+      }
+      const query = { email: email };
+      const user = await usersCollection.findOne(query);
+      const result = { admin: user?.role === "admin" };
+      res.send(result);
+    });
 
-      //admin
-       //  TODO : add verifyJWT
-      app.get("/users/admin/:email",verifyJWT,  async (req, res) => {
+    app.patch("/users/admin/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "admin",
+        },
+      };
+      const result = await usersCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await usersCollection.deleteOne(query);
+      res.send(result);
+    });
+
+    app.get("/users/:email", async (req, res) => {
+      console.log(req.params.email)
         const email = req.params.email;
-        if (req.decoded?.email !== email) {
-          res.send({ admin: false });
-          return;
-        }
-        const query = { email: email };
-        const user = await usersCollection.findOne(query);
-        const result = { admin: user?.role === "admin" };
-        res.send(result);
-      });
-
-
-      app.patch("/users/admin/:id", async (req, res) => {
-        const id = req.params.id;
-        console.log(id);
-        const filter = { _id: new ObjectId(id) };
-        const updateDoc = {
+      console.log(email)
+      const query = { email: email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+      console.log(result);
+    
+    });
+ 
+    app.put('/users/:email', async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email }; // Filter to find user by email
+      const options = { upsert: true };
+      const updatedUserInfo = req.body;
+      const userInfo = {
           $set: {
-            role: "admin",
-          },
-        };
-        const result = await usersCollection.updateOne(filter, updateDoc);
-        res.send(result);
-      });
+              phone: updatedUserInfo.phone,
+              birthdate: updatedUserInfo.birthdate,
+              country: updatedUserInfo.country,
+              city: updatedUserInfo.city,
+              nationality: updatedUserInfo.nationality,
+              name: updatedUserInfo.name,
+              //  photoURL: updatedUserInfo.photoURL,
+          }
+          
+      }
+  
+      try {
+          const result = await usersCollection.updateOne(filter, userInfo, options);
+          res.send(result);
+      } catch (error) {
+          console.error("Error updating user:", error);
+          res.status(500).send("Error updating user");
+      }
+  });
+  
 
-
-
-
-
-
-
-
-
-
-
+    
+  
 
 
 
@@ -170,4 +206,3 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Resume builder portal server is running on port ${port}`);
 });
-
