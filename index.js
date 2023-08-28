@@ -189,9 +189,6 @@ async function run() {
         console.error("Error updating user:", error);
         res.status(500).send("Error updating user");
       }
-    });
-    
-  
 
     
     //user Reviews routes
