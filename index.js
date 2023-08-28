@@ -234,6 +234,7 @@ async function run() {
       const result = await cartsCollection.deleteOne(query);
       res.send(result);
     });
+    
 
    //Get payment api
    app.get("/payment", verifyJWT, async (req, res) => {
@@ -257,24 +258,36 @@ async function run() {
 
   //Payment card api
 
-  // create payment intent
-  app.post("/create-payment-intent", verifyJWT, async (req, res) => {
-    const { price } = req.body;
-    if (!price) {
+ 
+
+  app.post("/create-payment-intent", async (req, res) => {
+    try {
+      const { price } = req.body;
+      if (!price) {
       return res.send({ message: 'Price not valid' })
     }
-    const amount = parseInt(price * 100);
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount,
-      currency: "usd",
-      payment_method_types: ["card"],
-    });
-
-    res.send({
-      clientSecret: paymentIntent.client_secret,
-    });
+  
+      const amount = parseInt(price * 100); // Convert to cents
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+  
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "An error occurred" });
+    }
+  });
+  
+  app.listen(3001, () => {
+    console.log("Server is running on port 3001");
   });
 
+  
   // Payment related api
   app.post("/payment", async (req, res) => {
     const payment = req.body;
