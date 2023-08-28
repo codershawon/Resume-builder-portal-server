@@ -4,13 +4,16 @@ const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 require("dotenv").config();
+const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.PORT || 5000;
+
+//middleware
 app.use(cors());
 app.use(express.json());
-console.log(process.env.ACCESS_TOKEN_SECRET);
 
 
 
+//Start JWT verification
 const verifyJWT = (req, res, next) => {
   const authorization = req.headers.authorization;
   if (!authorization) {
@@ -59,13 +62,19 @@ async function run() {
     const resumeCollection = client
       .db("resumeBuilderPortal")
       .collection("resume");
+      const cartsCollection = client
+      .db("resumeBuilderPortal")
+      .collection("carts"); //Created by Kabir
+      const paymentCollection = client
+      .db("resumeBuilderPortal")
+      .collection("payments"); //Created by Kabir
 
     //jwt
     app.post("/jwt", (req, res) => {
       const user = req.body;
       console.log(user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
+        expiresIn: "10h",
       });
       console.log(token);
       res.send({ token });
@@ -136,54 +145,50 @@ async function run() {
     
     });
  
-    app.put('/users/:email', async (req, res) => {
+    app.post('/users/:email', async (req, res) => {
       const email = req.params.email;
-      const filter = { email: email }; // Filter to find user by email
+      const filter = { email: email };
       const options = { upsert: true };
       const updatedUserInfo = req.body;
+    
       const userInfo = {
-          $set: {
-              phone: updatedUserInfo.phone,
-              birthdate: updatedUserInfo.birthdate,
-              country: updatedUserInfo.country,
-              city: updatedUserInfo.city,
-              nationality: updatedUserInfo.nationality,
-              name: updatedUserInfo.name,
-              //  photoURL: updatedUserInfo.photoURL,
-          }
-          
-      }
-  
+        $set: {
+          phone: updatedUserInfo.phone,
+          birthdate: updatedUserInfo.birthdate,
+          country: updatedUserInfo.country,
+          city: updatedUserInfo.city,
+          nationality: updatedUserInfo.nationality,
+          name: updatedUserInfo.name,
+        }
+      };
+    
       try {
-          const result = await usersCollection.updateOne(filter, userInfo, options);
-          res.send(result);
+        const result = await usersCollection.updateOne(filter, userInfo, options);
+        res.send(result);
       } catch (error) {
-          console.error("Error updating user:", error);
-          res.status(500).send("Error updating user");
+        console.error("Error updating user:", error);
+        res.status(500).send("Error updating user");
       }
-  });
-
-  app.post('/users/:email/update-profile', async (req, res) => {
-    const email = req.params.email;
-    const filter = { email: email };
-    const options = { upsert: true };
-    const updatedUserInfo = req.body;
-  
-    const userInfo = {
-      $set: {
-        photoURL: updatedUserInfo.photoURL
+    });
+    app.post('/users/:email/update-profile', async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updatedUserInfo = req.body;
+    
+      const userInfo = {
+        $set: {
+          photoURL: updatedUserInfo.photoURL
+        }
+      };
+    
+      try {
+        const result = await usersCollection.updateOne(filter, userInfo, options);
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating user:", error);
+        res.status(500).send("Error updating user");
       }
-    };
-  
-    try {
-      const result = await usersCollection.updateOne(filter, userInfo, options);
-      res.send(result);
-    } catch (error) {
-      console.error("Error updating user:", error);
-      res.status(500).send("Error updating user");
-    }
-  });
-  
 
     
     //user Reviews routes
@@ -208,6 +213,103 @@ async function run() {
       const result = await resumeCollection.find().toArray();
       res.send(result);
     });
+
+
+    // Carts Collection start here 
+    
+     // cart or buy collection api
+     app.get("/carts", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+
+      if (!email) {
+        res.send([]);
+      }
+
+      const decodedEmail = req.decoded.email;
+      if (email !== decodedEmail) {
+        return res
+          .status(403)
+          .send({ error: true, message: "Forbidden access" });
+      }
+
+      const query = { email: email };
+      const result = await cartsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // cart collection
+    app.post("/carts", async (req, res) => {
+      const item = req.body;
+      const result = await cartsCollection.insertOne(item);
+      res.send(result);
+    });
+
+      // cart item delete
+    app.delete("/carts/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await cartsCollection.deleteOne(query);
+      res.send(result);
+    });
+    
+
+   //Get payment api
+   app.get("/payment", verifyJWT, async (req, res) => {
+    const email = req.query.email;
+
+    if (!email) {
+      res.send([]);
+    }
+
+    const decodedEmail = req.decoded.email;
+    if (email !== decodedEmail) {
+      return res
+        .status(403)
+        .send({ error: true, message: "Forbidden access" });
+    }
+
+    const query = { email: email };
+    const result = await paymentCollection.find(query).toArray();
+    res.send(result);
+  });
+
+  //Payment card api
+
+ 
+
+  app.post("/create-payment-intent", async (req, res) => {
+    try {
+      const { price } = req.body;
+      if (!price) {
+      return res.send({ message: 'Price not valid' })
+    }
+  
+      const amount = parseInt(price * 100); // Convert to cents
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+  
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "An error occurred" });
+    }
+  });
+  
+  // Payment related api
+  app.post("/payment", async (req, res) => {
+    const payment = req.body;
+    const insertResult = await paymentCollection.insertOne(payment);
+    const query = {
+      _id: { $in: payment.cartItems.map((id) => new ObjectId(id)) },
+    };
+    const deleteResult = await cartsCollection.deleteMany(query);
+    res.send({ insertResult, deleteResult });
+  });
 
     
 
