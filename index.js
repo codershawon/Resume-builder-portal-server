@@ -145,32 +145,52 @@ async function run() {
     
     });
  
-    app.put('/users/:email', async (req, res) => {
+    app.post('/users/:email', async (req, res) => {
       const email = req.params.email;
-      const filter = { email: email }; // Filter to find user by email
+      const filter = { email: email };
       const options = { upsert: true };
       const updatedUserInfo = req.body;
+    
       const userInfo = {
-          $set: {
-              phone: updatedUserInfo.phone,
-              birthdate: updatedUserInfo.birthdate,
-              country: updatedUserInfo.country,
-              city: updatedUserInfo.city,
-              nationality: updatedUserInfo.nationality,
-              name: updatedUserInfo.name,
-              //  photoURL: updatedUserInfo.photoURL,
-          }
-          
-      }
-  
+        $set: {
+          phone: updatedUserInfo.phone,
+          birthdate: updatedUserInfo.birthdate,
+          country: updatedUserInfo.country,
+          city: updatedUserInfo.city,
+          nationality: updatedUserInfo.nationality,
+          name: updatedUserInfo.name,
+        }
+      };
+    
       try {
-          const result = await usersCollection.updateOne(filter, userInfo, options);
-          res.send(result);
+        const result = await usersCollection.updateOne(filter, userInfo, options);
+        res.send(result);
       } catch (error) {
-          console.error("Error updating user:", error);
-          res.status(500).send("Error updating user");
+        console.error("Error updating user:", error);
+        res.status(500).send("Error updating user");
       }
-  });
+    });
+    app.post('/users/:email/update-profile', async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updatedUserInfo = req.body;
+    
+      const userInfo = {
+        $set: {
+          photoURL: updatedUserInfo.photoURL
+        }
+      };
+    
+      try {
+        const result = await usersCollection.updateOne(filter, userInfo, options);
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating user:", error);
+        res.status(500).send("Error updating user");
+      }
+    });
+    
   
 
     
