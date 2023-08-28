@@ -303,11 +303,6 @@ async function run() {
     }
   });
   
-  app.listen(3001, () => {
-    console.log("Server is running on port 3001");
-  });
-
-  
   // Payment related api
   app.post("/payment", async (req, res) => {
     const payment = req.body;
