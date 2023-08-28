@@ -162,6 +162,27 @@ async function run() {
           res.status(500).send("Error updating user");
       }
   });
+
+  app.post('/users/:email/update-profile', async (req, res) => {
+    const email = req.params.email;
+    const filter = { email: email };
+    const options = { upsert: true };
+    const updatedUserInfo = req.body;
+  
+    const userInfo = {
+      $set: {
+        photoURL: updatedUserInfo.photoURL
+      }
+    };
+  
+    try {
+      const result = await usersCollection.updateOne(filter, userInfo, options);
+      res.send(result);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).send("Error updating user");
+    }
+  });
   
 
     
