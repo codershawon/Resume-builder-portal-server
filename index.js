@@ -145,33 +145,50 @@ async function run() {
     
     });
  
-    app.put('/users/:email', async (req, res) => {
+    app.post('/users/:email', async (req, res) => {
       const email = req.params.email;
-      const filter = { email: email }; // Filter to find user by email
+      const filter = { email: email };
       const options = { upsert: true };
       const updatedUserInfo = req.body;
+    
       const userInfo = {
-          $set: {
-              phone: updatedUserInfo.phone,
-              birthdate: updatedUserInfo.birthdate,
-              country: updatedUserInfo.country,
-              city: updatedUserInfo.city,
-              nationality: updatedUserInfo.nationality,
-              name: updatedUserInfo.name,
-              //  photoURL: updatedUserInfo.photoURL,
-          }
-          
-      }
-  
+        $set: {
+          phone: updatedUserInfo.phone,
+          birthdate: updatedUserInfo.birthdate,
+          country: updatedUserInfo.country,
+          city: updatedUserInfo.city,
+          nationality: updatedUserInfo.nationality,
+          name: updatedUserInfo.name,
+        }
+      };
+    
       try {
-          const result = await usersCollection.updateOne(filter, userInfo, options);
-          res.send(result);
+        const result = await usersCollection.updateOne(filter, userInfo, options);
+        res.send(result);
       } catch (error) {
-          console.error("Error updating user:", error);
-          res.status(500).send("Error updating user");
+        console.error("Error updating user:", error);
+        res.status(500).send("Error updating user");
       }
-  });
-  
+    });
+    app.post('/users/:email/update-profile', async (req, res) => {
+      const email = req.params.email;
+      const filter = { email: email };
+      const options = { upsert: true };
+      const updatedUserInfo = req.body;
+    
+      const userInfo = {
+        $set: {
+          photoURL: updatedUserInfo.photoURL
+        }
+      };
+    
+      try {
+        const result = await usersCollection.updateOne(filter, userInfo, options);
+        res.send(result);
+      } catch (error) {
+        console.error("Error updating user:", error);
+        res.status(500).send("Error updating user");
+      }
 
     
     //user Reviews routes
@@ -234,6 +251,7 @@ async function run() {
       const result = await cartsCollection.deleteOne(query);
       res.send(result);
     });
+    
 
    //Get payment api
    app.get("/payment", verifyJWT, async (req, res) => {
@@ -257,24 +275,31 @@ async function run() {
 
   //Payment card api
 
-  // create payment intent
-  app.post("/create-payment-intent", verifyJWT, async (req, res) => {
-    const { price } = req.body;
-    if (!price) {
+ 
+
+  app.post("/create-payment-intent", async (req, res) => {
+    try {
+      const { price } = req.body;
+      if (!price) {
       return res.send({ message: 'Price not valid' })
     }
-    const amount = parseInt(price * 100);
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount,
-      currency: "usd",
-      payment_method_types: ["card"],
-    });
-
-    res.send({
-      clientSecret: paymentIntent.client_secret,
-    });
+  
+      const amount = parseInt(price * 100); // Convert to cents
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+  
+      res.json({
+        clientSecret: paymentIntent.client_secret,
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "An error occurred" });
+    }
   });
-
+  
   // Payment related api
   app.post("/payment", async (req, res) => {
     const payment = req.body;
