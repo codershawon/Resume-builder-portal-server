@@ -70,6 +70,7 @@ async function run() {
     console.log(token)
     res.send({token})
   })
+  
 
     //user related routes
     //  TODO : add verifyJWT
