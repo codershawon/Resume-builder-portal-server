@@ -5,7 +5,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 require("dotenv").config();
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 4000;
 
 //middleware
 app.use(cors());
@@ -313,6 +313,64 @@ async function run() {
     const deleteResult = await cartsCollection.deleteMany(query);
     res.send({ insertResult, deleteResult });
   });
+
+  app.get('/resumeCounts',  async(req, res) =>{
+    const aggregationPipeline = [
+      {
+        $group: {
+          _id: '$profile',
+          count: { $sum: 1 }
+        }
+      }
+    ];
+    const result = await resumeCollection.aggregate(aggregationPipeline).toArray();
+
+    const profileCounts = {};
+    result.forEach(item => {
+      profileCounts[item._id] = item.count;
+    });
+    res.send(profileCounts);
+  
+  })
+
+  app.get("/monthly-sales", async(req,res)=>{
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const pipeline = [
+      {
+        $match: {
+          date: { $gte: oneYearAgo }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' },
+            template: '$template'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.year',
+          months: {
+            $push: {
+              month: '$_id.month',
+              template: '$_id.template',
+              count: '$count'
+            }
+          }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ];
+    const result = await paymentCollection.aggregate(pipeline).toArray();
+    res.send(result);
+  })
 
     
 
