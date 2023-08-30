@@ -5,7 +5,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
 require("dotenv").config();
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 4000
 
 //middleware
 app.use(cors());
@@ -62,19 +62,12 @@ async function run() {
     const resumeCollection = client
       .db("resumeBuilderPortal")
       .collection("resume");
-
-    const blogsCollection = client
-      .db("resumeBuilderPortal")
-      .collection("blogs");
-     
-
       const cartsCollection = client
       .db("resumeBuilderPortal")
       .collection("carts"); //Created by Kabir
       const paymentCollection = client
       .db("resumeBuilderPortal")
       .collection("payments"); //Created by Kabir
-
 
     //jwt
     app.post("/jwt", (req, res) => {
@@ -86,7 +79,6 @@ async function run() {
       console.log(token);
       res.send({ token });
     });
-
 
     //user related routes
     //  TODO : add verifyJWT
@@ -188,7 +180,7 @@ async function run() {
         $set: {
           photoURL: updatedUserInfo.photoURL
         }
-    };
+      };
     
       try {
         const result = await usersCollection.updateOne(filter, userInfo, options);
@@ -197,27 +189,9 @@ async function run() {
         console.error("Error updating user:", error);
         res.status(500).send("Error updating user");
       }
-
-    })
-
-
-
-
-  });
-
-
-  //blogs
-  app.get("/blogs", async(req,res)=>{
-    const result =await blogsCollection.find().toArray();
-    res.send(result)
-  })
-
-  app.get('/blogs/:id',async(req,res)=>{
-    const id =req.params.id;
-    const query ={_id: new ObjectId(id)}
-    const blogData =await blogsCollection.findOne(query);
-    res.send(blogData)
-  })
+    });
+    
+  
 
     
     //user Reviews routes
@@ -340,11 +314,65 @@ async function run() {
     res.send({ insertResult, deleteResult });
   });
 
+  app.get('/resumeCounts',  async(req, res) =>{
+    const aggregationPipeline = [
+      {
+        $group: {
+          _id: '$profile',
+          count: { $sum: 1 }
+        }
+      }
+    ];
+    const result = await resumeCollection.aggregate(aggregationPipeline).toArray();
+
+    const profileCounts = {};
+    result.forEach(item => {
+      profileCounts[item._id] = item.count;
+    });
+    res.send(profileCounts);
   
-  app.get("/usersHistory", async (req, res) => {
-    const result = await paymentCollection.find().toArray();
+  })
+
+  
+  app.get("/monthly-sales", async(req,res)=>{
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const pipeline = [
+      {
+        $match: {
+          date: { $gte: oneYearAgo }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$date' },
+            month: { $month: '$date' },
+            template: '$template'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.year',
+          months: {
+            $push: {
+              month: '$_id.month',
+              template: '$_id.template',
+              count: '$count'
+            }
+          }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ];
+    const result = await paymentCollection.aggregate(pipeline).toArray();
     res.send(result);
-  });
+  })
+
     
 
     // await client.connect();
