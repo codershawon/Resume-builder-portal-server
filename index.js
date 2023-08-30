@@ -67,7 +67,7 @@ async function run() {
       .db("resumeBuilderPortal")
       .collection("blogs");
      
-p
+
       const cartsCollection = client
       .db("resumeBuilderPortal")
       .collection("carts"); //Created by Kabir
@@ -86,6 +86,7 @@ p
       console.log(token);
       res.send({ token });
     });
+
 
     //user related routes
     //  TODO : add verifyJWT
