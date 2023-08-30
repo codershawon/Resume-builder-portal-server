@@ -187,7 +187,7 @@ p
         $set: {
           photoURL: updatedUserInfo.photoURL
         }
-      };
+    };
     
       try {
         const result = await usersCollection.updateOne(filter, userInfo, options);
@@ -196,6 +196,8 @@ p
         console.error("Error updating user:", error);
         res.status(500).send("Error updating user");
       }
+
+    })
 
 
 
@@ -215,12 +217,6 @@ p
     const blogData =await blogsCollection.findOne(query);
     res.send(blogData)
   })
-
-
-
-  
-l
-
 
     
     //user Reviews routes
@@ -343,6 +339,11 @@ l
     res.send({ insertResult, deleteResult });
   });
 
+  
+  app.get("/usersHistory", async (req, res) => {
+    const result = await paymentCollection.find().toArray();
+    res.send(result);
+  });
     
 
     // await client.connect();
