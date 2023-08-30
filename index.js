@@ -59,7 +59,10 @@ async function run() {
     const resumeCollection = client
       .db("resumeBuilderPortal")
       .collection("resume");
-
+    const blogsCollection = client
+      .db("resumeBuilderPortal")
+      .collection("blogs");
+     
     //jwt
     app.post("/jwt", (req, res) => {
       const user = req.body;
@@ -183,6 +186,23 @@ async function run() {
       res.status(500).send("Error updating user");
     }
   });
+
+
+  //blogs
+  app.get("/blogs", async(req,res)=>{
+    const result =await blogsCollection.find().toArray();
+    res.send(result)
+  })
+
+  app.get('/blogs/:id',async(req,res)=>{
+    const id =req.params.id;
+    const query ={_id: new ObjectId(id)}
+    const blogData =await blogsCollection.findOne(query);
+    res.send(blogData)
+  })
+
+
+
   
 
     
