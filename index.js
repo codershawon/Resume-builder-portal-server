@@ -62,12 +62,19 @@ async function run() {
     const resumeCollection = client
       .db("resumeBuilderPortal")
       .collection("resume");
+
+    const blogsCollection = client
+      .db("resumeBuilderPortal")
+      .collection("blogs");
+     
+
       const cartsCollection = client
       .db("resumeBuilderPortal")
       .collection("carts"); //Created by Kabir
       const paymentCollection = client
       .db("resumeBuilderPortal")
       .collection("payments"); //Created by Kabir
+
 
     //jwt
     app.post("/jwt", (req, res) => {
@@ -79,6 +86,7 @@ async function run() {
       console.log(token);
       res.send({ token });
     });
+
 
     //user related routes
     //  TODO : add verifyJWT
@@ -180,7 +188,7 @@ async function run() {
         $set: {
           photoURL: updatedUserInfo.photoURL
         }
-      };
+    };
     
       try {
         const result = await usersCollection.updateOne(filter, userInfo, options);
@@ -189,9 +197,27 @@ async function run() {
         console.error("Error updating user:", error);
         res.status(500).send("Error updating user");
       }
-    });
-    
-  
+
+    })
+
+
+
+
+  });
+
+
+  //blogs
+  app.get("/blogs", async(req,res)=>{
+    const result =await blogsCollection.find().toArray();
+    res.send(result)
+  })
+
+  app.get('/blogs/:id',async(req,res)=>{
+    const id =req.params.id;
+    const query ={_id: new ObjectId(id)}
+    const blogData =await blogsCollection.findOne(query);
+    res.send(blogData)
+  })
 
     
     //user Reviews routes
@@ -314,6 +340,7 @@ async function run() {
     res.send({ insertResult, deleteResult });
   });
 
+<<<<<<< HEAD
   app.get('/resumeCounts',  async(req, res) =>{
     const aggregationPipeline = [
       {
@@ -372,6 +399,13 @@ async function run() {
     res.send(result);
   })
 
+=======
+  
+  app.get("/usersHistory", async (req, res) => {
+    const result = await paymentCollection.find().toArray();
+    res.send(result);
+  });
+>>>>>>> 2d7fef0582025d94823b8c80081d8c50acc6f090
     
 
     // await client.connect();
