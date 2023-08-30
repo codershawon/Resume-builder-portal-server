@@ -180,7 +180,7 @@ async function run() {
         $set: {
           photoURL: updatedUserInfo.photoURL
         }
-      };
+    };
     
       try {
         const result = await usersCollection.updateOne(filter, userInfo, options);
@@ -189,7 +189,7 @@ async function run() {
         console.error("Error updating user:", error);
         res.status(500).send("Error updating user");
       }
-
+    })
     
     //user Reviews routes
     app.get("/review", async (req, res) => {
@@ -311,6 +311,11 @@ async function run() {
     res.send({ insertResult, deleteResult });
   });
 
+  
+  app.get("/usersHistory", async (req, res) => {
+    const result = await paymentCollection.find().toArray();
+    res.send(result);
+  });
     
 
     // await client.connect();
