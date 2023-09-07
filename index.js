@@ -83,6 +83,7 @@ async function run() {
       res.send({ token });
     });
 
+
     //user related routes
     //  TODO : add verifyJWT
     app.get("/users", verifyJWT, async (req, res) => {
@@ -194,6 +195,26 @@ async function run() {
       }
     });
     
+
+   
+     //blogs
+     app.get("/blogs", async(req,res)=>{
+      const result =await blogsCollection.find().toArray();
+      res.send(result)
+    })
+  
+    app.get('/blogs/:id',async(req,res)=>{
+      const id =req.params.id;
+      const query ={_id: new ObjectId(id)}
+      const blogData =await blogsCollection.findOne(query);
+      res.send(blogData)
+    })
+  
+    app.post("/blogs", async(req,res)=>{
+      const newBlog =req.body;
+      const result =await blogsCollection.insertOne(newBlog)
+      res.send(result)
+    })
   
 
     
@@ -317,18 +338,7 @@ async function run() {
     res.send({ insertResult, deleteResult });
   });
 
-    //blogs
-    app.get("/blogs", async(req,res)=>{
-      const result =await blogsCollection.find().toArray();
-      res.send(result)
-    })
-  
-    app.get('/blogs/:id',async(req,res)=>{
-      const id =req.params.id;
-      const query ={_id: new ObjectId(id)}
-      const blogData =await blogsCollection.findOne(query);
-      res.send(blogData)
-    })
+   
 
   app.get('/resumeCounts',  async(req, res) =>{
     const aggregationPipeline = [
