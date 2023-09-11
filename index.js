@@ -68,6 +68,9 @@ async function run() {
       const paymentCollection = client
       .db("resumeBuilderPortal")
       .collection("payments"); //Created by Kabir
+      const blogsCollection = client
+      .db("resumeBuilderPortal")
+      .collection("blogs");
 
     //jwt
     app.post("/jwt", (req, res) => {
@@ -79,6 +82,7 @@ async function run() {
       console.log(token);
       res.send({ token });
     });
+
 
     //user related routes
     //  TODO : add verifyJWT
@@ -145,7 +149,7 @@ async function run() {
     
     });
  
-    app.post('/users/:email', async (req, res) => {
+    app.put('/users/:email', async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
       const options = { upsert: true };
@@ -191,6 +195,26 @@ async function run() {
       }
     });
     
+
+   
+     //blogs
+     app.get("/blogs", async(req,res)=>{
+      const result =await blogsCollection.find().toArray();
+      res.send(result)
+    })
+  
+    app.get('/blogs/:id',async(req,res)=>{
+      const id =req.params.id;
+      const query ={_id: new ObjectId(id)}
+      const blogData =await blogsCollection.findOne(query);
+      res.send(blogData)
+    })
+  
+    app.post("/blogs", async(req,res)=>{
+      const newBlog =req.body;
+      const result =await blogsCollection.insertOne(newBlog)
+      res.send(result)
+    })
   
 
     
@@ -314,6 +338,8 @@ async function run() {
     res.send({ insertResult, deleteResult });
   });
 
+   
+
   app.get('/resumeCounts',  async(req, res) =>{
     const aggregationPipeline = [
       {
@@ -332,6 +358,7 @@ async function run() {
     res.send(profileCounts);
   
   })
+
 
   app.get("/monthly-sales", async(req,res)=>{
     const oneYearAgo = new Date();
@@ -371,6 +398,11 @@ async function run() {
     const result = await paymentCollection.aggregate(pipeline).toArray();
     res.send(result);
   })
+  
+  app.get("/usersHistory", async (req, res) => {
+    const result = await paymentCollection.find().toArray();
+    res.send(result);
+  });
 
     
 
