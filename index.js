@@ -3,15 +3,23 @@ const cors = require("cors");
 const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const app = express();
+const http = require("http");
+const { Server } = require("socket.io");
+const server = http.createServer(app);
 require("dotenv").config();
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
-const port = process.env.PORT || 4000
+const port = process.env.PORT || 4000;
 
 //middleware
 app.use(cors());
 app.use(express.json());
 
-
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST"],
+  },
+});
 
 //Start JWT verification
 const verifyJWT = (req, res, next) => {
@@ -62,13 +70,13 @@ async function run() {
     const resumeCollection = client
       .db("resumeBuilderPortal")
       .collection("resume");
-      const cartsCollection = client
+    const cartsCollection = client
       .db("resumeBuilderPortal")
       .collection("carts"); //Created by Kabir
-      const paymentCollection = client
+    const paymentCollection = client
       .db("resumeBuilderPortal")
       .collection("payments"); //Created by Kabir
-      const blogsCollection = client
+    const blogsCollection = client
       .db("resumeBuilderPortal")
       .collection("blogs");
 
@@ -81,6 +89,19 @@ async function run() {
       });
       console.log(token);
       res.send({ token });
+    });
+
+    // socket.io connection
+    io.on("connection", (socket) => {
+      console.log(`User connected : ${socket.id}`);
+
+      socket.on("send-message", (message) => {
+        console.log(message);
+        // Broadcast the received message to all the connected user
+        io.emit("received-message", message);
+      });
+
+      socket.on("disconnect", () => console.log("User disconnected"));
     });
 
     //user related routes
@@ -138,22 +159,21 @@ async function run() {
     });
 
     app.get("/users/:email", async (req, res) => {
-      console.log(req.params.email)
-        const email = req.params.email;
-      console.log(email)
+      console.log(req.params.email);
+      const email = req.params.email;
+      console.log(email);
       const query = { email: email };
       const result = await usersCollection.findOne(query);
       res.send(result);
       console.log(result);
-    
     });
- 
-    app.put('/users/:email', async (req, res) => {
+
+    app.put("/users/:email", async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
       const options = { upsert: true };
       const updatedUserInfo = req.body;
-    
+
       const userInfo = {
         $set: {
           phone: updatedUserInfo.phone,
@@ -162,41 +182,68 @@ async function run() {
           city: updatedUserInfo.city,
           nationality: updatedUserInfo.nationality,
           name: updatedUserInfo.name,
-        }
+        },
       };
-    
+
       try {
-        const result = await usersCollection.updateOne(filter, userInfo, options);
+        const result = await usersCollection.updateOne(
+          filter,
+          userInfo,
+          options
+        );
         res.send(result);
       } catch (error) {
         console.error("Error updating user:", error);
         res.status(500).send("Error updating user");
       }
     });
-    app.post('/users/:email/update-profile', async (req, res) => {
+    app.post("/users/:email/update-profile", async (req, res) => {
       const email = req.params.email;
       const filter = { email: email };
       const options = { upsert: true };
       const updatedUserInfo = req.body;
-    
+
       const userInfo = {
         $set: {
-          photoURL: updatedUserInfo.photoURL
-        }
+          photoURL: updatedUserInfo.photoURL,
+        },
       };
-    
+
       try {
-        const result = await usersCollection.updateOne(filter, userInfo, options);
+        const result = await usersCollection.updateOne(
+          filter,
+          userInfo,
+          options
+        );
         res.send(result);
       } catch (error) {
         console.error("Error updating user:", error);
         res.status(500).send("Error updating user");
       }
     });
-    
-  
-    
-    //User Reviews routes
+
+
+    //blogs
+    app.get("/blogs", async (req, res) => {
+      const result = await blogsCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.get("/blogs/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const blogData = await blogsCollection.findOne(query);
+      res.send(blogData);
+    });
+
+    app.post("/blogs", async (req, res) => {
+      const newBlog = req.body;
+      const result = await blogsCollection.insertOne(newBlog);
+      res.send(result);
+    });
+
+    //user Reviews routes
+
     app.get("/review", async (req, res) => {
       const result = await reviewCollection.find().toArray();
       res.send(result);
@@ -219,11 +266,10 @@ async function run() {
       res.send(result);
     });
 
+    // Carts Collection start here
 
-    // Carts Collection start here 
-    
-     // cart or buy collection api
-     app.get("/carts", verifyJWT, async (req, res) => {
+    // cart or buy collection api
+    app.get("/carts", verifyJWT, async (req, res) => {
       const email = req.query.email;
 
       if (!email) {
@@ -249,151 +295,133 @@ async function run() {
       res.send(result);
     });
 
-      // cart item delete
+    // cart item delete
     app.delete("/carts/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await cartsCollection.deleteOne(query);
       res.send(result);
     });
-    
 
-   //Get payment api
-   app.get("/payment", verifyJWT, async (req, res) => {
-    const email = req.query.email;
+    //Get payment api
+    app.get("/payment", verifyJWT, async (req, res) => {
+      const email = req.query.email;
 
-    if (!email) {
-      res.send([]);
-    }
-
-    const decodedEmail = req.decoded.email;
-    if (email !== decodedEmail) {
-      return res
-        .status(403)
-        .send({ error: true, message: "Forbidden access" });
-    }
-
-    const query = { email: email };
-    const result = await paymentCollection.find(query).toArray();
-    res.send(result);
-  });
-
-  //Payment card api
-
- 
-
-  app.post("/create-payment-intent", async (req, res) => {
-    try {
-      const { price } = req.body;
-      if (!price) {
-      return res.send({ message: 'Price not valid' })
-    }
-  
-      const amount = parseInt(price * 100); // Convert to cents
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
-        currency: "usd",
-        payment_method_types: ["card"],
-      });
-  
-      res.json({
-        clientSecret: paymentIntent.client_secret,
-      });
-    } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: "An error occurred" });
-    }
-  });
-  
-  // Payment related api
-  app.post("/payment", async (req, res) => {
-    const payment = req.body;
-    const insertResult = await paymentCollection.insertOne(payment);
-    const query = {
-      _id: { $in: payment.cartItems.map((id) => new ObjectId(id)) },
-    };
-    const deleteResult = await cartsCollection.deleteMany(query);
-    res.send({ insertResult, deleteResult });
-  });
-
-    //blogs
-    app.get("/blogs", async(req,res)=>{
-      const result =await blogsCollection.find().toArray();
-      res.send(result)
-    })
-  
-    app.get('/blogs/:id',async(req,res)=>{
-      const id =req.params.id;
-      const query ={_id: new ObjectId(id)}
-      const blogData =await blogsCollection.findOne(query);
-      res.send(blogData)
-    })
-
-  app.get('/resumeCounts',  async(req, res) =>{
-    const aggregationPipeline = [
-      {
-        $group: {
-          _id: '$profile',
-          count: { $sum: 1 }
-        }
+      if (!email) {
+        res.send([]);
       }
-    ];
-    const result = await resumeCollection.aggregate(aggregationPipeline).toArray();
 
-    const profileCounts = {};
-    result.forEach(item => {
-      profileCounts[item._id] = item.count;
+      const decodedEmail = req.decoded.email;
+      if (email !== decodedEmail) {
+        return res
+          .status(403)
+          .send({ error: true, message: "Forbidden access" });
+      }
+
+      const query = { email: email };
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
     });
-    res.send(profileCounts);
-  
-  })
 
+    //Payment card api
 
-  app.get("/monthly-sales", async(req,res)=>{
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    const pipeline = [
-      {
-        $match: {
-          date: { $gte: oneYearAgo }
+    app.post("/create-payment-intent", async (req, res) => {
+      try {
+        const { price } = req.body;
+        if (!price) {
+          return res.send({ message: "Price not valid" });
         }
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$date' },
-            month: { $month: '$date' },
-            template: '$template'
-          },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $group: {
-          _id: '$_id.year',
-          months: {
-            $push: {
-              month: '$_id.month',
-              template: '$_id.template',
-              count: '$count'
-            }
-          }
-        }
-      },
-      {
-        $sort: { _id: 1 }
+
+        const amount = parseInt(price * 100); // Convert to cents
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+
+        res.json({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "An error occurred" });
       }
-    ];
-    const result = await paymentCollection.aggregate(pipeline).toArray();
-    res.send(result);
-  })
-  
-  app.get("/usersHistory", async (req, res) => {
-    const result = await paymentCollection.find().toArray();
-    res.send(result);
-  });
+    });
 
-    
+    // Payment related api
+    app.post("/payment", async (req, res) => {
+      const payment = req.body;
+      const insertResult = await paymentCollection.insertOne(payment);
+      const query = {
+        _id: { $in: payment.cartItems.map((id) => new ObjectId(id)) },
+      };
+      const deleteResult = await cartsCollection.deleteMany(query);
+      res.send({ insertResult, deleteResult });
+    });
+
+    app.get("/resumeCounts", async (req, res) => {
+      const aggregationPipeline = [
+        {
+          $group: {
+            _id: "$profile",
+            count: { $sum: 1 },
+          },
+        },
+      ];
+      const result = await resumeCollection
+        .aggregate(aggregationPipeline)
+        .toArray();
+
+      const profileCounts = {};
+      result.forEach((item) => {
+        profileCounts[item._id] = item.count;
+      });
+      res.send(profileCounts);
+    });
+
+    app.get("/monthly-sales", async (req, res) => {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const pipeline = [
+        {
+          $match: {
+            date: { $gte: oneYearAgo },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: "$date" },
+              month: { $month: "$date" },
+              template: "$template",
+            },
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $group: {
+            _id: "$_id.year",
+            months: {
+              $push: {
+                month: "$_id.month",
+                template: "$_id.template",
+                count: "$count",
+              },
+            },
+          },
+        },
+        {
+          $sort: { _id: 1 },
+        },
+      ];
+      const result = await paymentCollection.aggregate(pipeline).toArray();
+      res.send(result);
+    });
+
+    app.get("/usersHistory", async (req, res) => {
+      const result = await paymentCollection.find().toArray();
+      res.send(result);
+    });
 
     // await client.connect();
     // Send a ping to confirm a successful connection
@@ -412,6 +440,10 @@ app.get("/", (req, res) => {
   res.send("Resume builder portal server is running");
 });
 
-app.listen(port, () => {
+// app.listen(port, () => {
+//   console.log(`Resume builder portal server is running on port ${port}`);
+// });
+
+server.listen(port, () => {
   console.log(`Resume builder portal server is running on port ${port}`);
 });
