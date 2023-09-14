@@ -222,6 +222,7 @@ async function run() {
       }
     });
 
+
     //blogs
     app.get("/blogs", async (req, res) => {
       const result = await blogsCollection.find().toArray();
@@ -242,6 +243,7 @@ async function run() {
     });
 
     //user Reviews routes
+
     app.get("/review", async (req, res) => {
       const result = await reviewCollection.find().toArray();
       res.send(result);
