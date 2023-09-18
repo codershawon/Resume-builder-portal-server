@@ -242,6 +242,29 @@ async function run() {
       res.send(result);
     });
 
+    app.put('/blogs/:id', async (req, res) => {
+      const postId = req.params.id;
+      const newComment = req.body;
+    
+      try {
+        const objectId = new ObjectId(postId);
+        const result = await blogsCollection.updateOne(
+          { _id: objectId },
+          { $push: { comments: newComment } }
+        );
+    
+        if (result.matchedCount === 0) {
+          return res.status(404).json({ error: 'Blog post not found' });
+        }
+    
+        res.json({ success: true });
+      } catch (error) {
+        console.error('Error updating comments:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
+    });
+    
+
     //user Reviews routes
 
     app.get("/review", async (req, res) => {
@@ -258,6 +281,39 @@ async function run() {
       }
 
       const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+
+    app.put("/review/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log("id", id);
+      const newStatus = "approved"; // Set the new status to "approved"
+      const filter = { _id: new ObjectId(id) };
+      console.log("objectID", filter);
+      const updateDoc = {
+        $set: {
+          status: newStatus,
+        },
+      };
+
+      try {
+        const result = await reviewCollection.updateOne(filter, updateDoc);
+        console.log("result", result);
+        if (result.modifiedCount > 0) {
+          res.json({ success: true, message: "Testimonial status updated successfully." });
+        } else {
+          res.json({ success: false, message: "Testimonial not found or status not updated." });
+        }
+      } catch (error) {
+        console.error("Error updating testimonial status:", error);
+        res.status(500).json({ success: false, message: "Error updating testimonial status." });
+      }
+    });
+
+    app.delete("/review/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await reviewCollection.deleteOne(query);
       res.send(result);
     });
 
@@ -422,6 +478,7 @@ async function run() {
       const result = await paymentCollection.find().toArray();
       res.send(result);
     });
+
 
     // await client.connect();
     // Send a ping to confirm a successful connection
