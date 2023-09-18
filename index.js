@@ -8,7 +8,7 @@ const { Server } = require("socket.io");
 const server = http.createServer(app);
 require("dotenv").config();
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 4000;
 
 //middleware
 app.use(cors());
@@ -16,7 +16,7 @@ app.use(express.json());
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "http://localhost:5175",
     methods: ["GET", "POST"],
   },
 });
@@ -416,25 +416,31 @@ async function run() {
     });
 
     app.get("/resumeCounts", async (req, res) => {
-      const aggregationPipeline = [
-        {
-          $group: {
-            _id: "$profile",
-            count: { $sum: 1 },
+      try {
+        const aggregationPipeline = [
+          {
+            $group: {
+              _id: "$type", // Change from "$profile" to "$type"
+              count: { $sum: 1 },
+            },
           },
-        },
-      ];
-      const result = await resumeCollection
-        .aggregate(aggregationPipeline)
-        .toArray();
-
-      const profileCounts = {};
-      result.forEach((item) => {
-        profileCounts[item._id] = item.count;
-      });
-      res.send(profileCounts);
+        ];
+    
+        const result = await resumeCollection.aggregate(aggregationPipeline).toArray();
+    
+        const profileCounts = {};
+        result.forEach((item) => {
+          profileCounts[item._id] = item.count;
+        });
+    
+        console.log('Profile Counts:', profileCounts);
+        res.status(200).json(profileCounts);
+      } catch (error) {
+        console.error('Error fetching resume counts:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
     });
-
+    
     app.get("/monthly-sales", async (req, res) => {
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
