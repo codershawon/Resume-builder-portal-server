@@ -79,6 +79,9 @@ async function run() {
     const blogsCollection = client
       .db("resumeBuilderPortal")
       .collection("blogs");
+    const commentsCollection = client
+      .db("resumeBuilderPortal")
+      .collection("comments");
 
     //jwt
     app.post("/jwt", (req, res) => {
@@ -240,6 +243,24 @@ async function run() {
       const result = await blogsCollection.insertOne(newBlog);
       res.send(result);
     });
+
+    // Blogs comment section
+    app.post("/blogs", async (req, res) => {
+      const comments = req.body;
+      const result = await blogsCollection.insertOne(comments);
+      res.send(result);
+    });
+
+    app.get("/comments/:blogId", async (req, res) => {
+      console.log(req.params.email);
+      const blogId = req.params.blogId;
+      console.log(blogId);
+      const query = { blogId: blogId };
+      const result = await commentsCollection.findOne(query);
+      res.send(result);
+      console.log(result);
+    });
+
 
     //user Reviews routes
     app.get("/review", async (req, res) => {
