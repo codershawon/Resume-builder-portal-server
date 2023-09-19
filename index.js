@@ -85,7 +85,7 @@ async function run() {
       const user = req.body;
       console.log(user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "10h",
+        expiresIn: "1h",
       });
       console.log(token);
       res.send({ token });
@@ -111,7 +111,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/users", async (req, res) => {
+    app.post("/users",verifyJWT, async (req, res) => {
       const user = req.body;
       console.log(user);
       const query = { email: user?.email };
