@@ -16,7 +16,7 @@ app.use(express.json());
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "http://localhost:5175",
     methods: ["GET", "POST"],
   },
 });
@@ -79,16 +79,13 @@ async function run() {
     const blogsCollection = client
       .db("resumeBuilderPortal")
       .collection("blogs");
-    const commentsCollection = client
-      .db("resumeBuilderPortal")
-      .collection("comments");
 
     //jwt
     app.post("/jwt", (req, res) => {
       const user = req.body;
       console.log(user);
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "10h",
+        expiresIn: "1h",
       });
       console.log(token);
       res.send({ token });
@@ -114,7 +111,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/users", async (req, res) => {
+    app.post("/users",verifyJWT, async (req, res) => {
       const user = req.body;
       console.log(user);
       const query = { email: user?.email };
@@ -225,6 +222,7 @@ async function run() {
       }
     });
 
+
     //blogs
     app.get("/blogs", async (req, res) => {
       const result = await blogsCollection.find().toArray();
@@ -244,25 +242,31 @@ async function run() {
       res.send(result);
     });
 
-    // Blogs comment section
-    app.post("/blogs", async (req, res) => {
-      const comments = req.body;
-      const result = await blogsCollection.insertOne(comments);
-      res.send(result);
+    app.put('/blogs/:id', async (req, res) => {
+      const postId = req.params.id;
+      const newComment = req.body;
+    
+      try {
+        const objectId = new ObjectId(postId);
+        const result = await blogsCollection.updateOne(
+          { _id: objectId },
+          { $push: { comments: newComment } }
+        );
+    
+        if (result.matchedCount === 0) {
+          return res.status(404).json({ error: 'Blog post not found' });
+        }
+    
+        res.json({ success: true });
+      } catch (error) {
+        console.error('Error updating comments:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
     });
-
-    app.get("/comments/:blogId", async (req, res) => {
-      console.log(req.params.email);
-      const blogId = req.params.blogId;
-      console.log(blogId);
-      const query = { blogId: blogId };
-      const result = await commentsCollection.findOne(query);
-      res.send(result);
-      console.log(result);
-    });
-
+    
 
     //user Reviews routes
+
     app.get("/review", async (req, res) => {
       const result = await reviewCollection.find().toArray();
       res.send(result);
@@ -277,6 +281,39 @@ async function run() {
       }
 
       const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+
+    app.put("/review/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log("id", id);
+      const newStatus = "approved"; // Set the new status to "approved"
+      const filter = { _id: new ObjectId(id) };
+      console.log("objectID", filter);
+      const updateDoc = {
+        $set: {
+          status: newStatus,
+        },
+      };
+
+      try {
+        const result = await reviewCollection.updateOne(filter, updateDoc);
+        console.log("result", result);
+        if (result.modifiedCount > 0) {
+          res.json({ success: true, message: "Testimonial status updated successfully." });
+        } else {
+          res.json({ success: false, message: "Testimonial not found or status not updated." });
+        }
+      } catch (error) {
+        console.error("Error updating testimonial status:", error);
+        res.status(500).json({ success: false, message: "Error updating testimonial status." });
+      }
+    });
+
+    app.delete("/review/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await reviewCollection.deleteOne(query);
       res.send(result);
     });
 
@@ -379,25 +416,31 @@ async function run() {
     });
 
     app.get("/resumeCounts", async (req, res) => {
-      const aggregationPipeline = [
-        {
-          $group: {
-            _id: "$profile",
-            count: { $sum: 1 },
+      try {
+        const aggregationPipeline = [
+          {
+            $group: {
+              _id: "$type", // Change from "$profile" to "$type"
+              count: { $sum: 1 },
+            },
           },
-        },
-      ];
-      const result = await resumeCollection
-        .aggregate(aggregationPipeline)
-        .toArray();
-
-      const profileCounts = {};
-      result.forEach((item) => {
-        profileCounts[item._id] = item.count;
-      });
-      res.send(profileCounts);
+        ];
+    
+        const result = await resumeCollection.aggregate(aggregationPipeline).toArray();
+    
+        const profileCounts = {};
+        result.forEach((item) => {
+          profileCounts[item._id] = item.count;
+        });
+    
+        console.log('Profile Counts:', profileCounts);
+        res.status(200).json(profileCounts);
+      } catch (error) {
+        console.error('Error fetching resume counts:', error);
+        res.status(500).json({ error: 'Internal server error' });
+      }
     });
-
+    
     app.get("/monthly-sales", async (req, res) => {
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -441,6 +484,7 @@ async function run() {
       const result = await paymentCollection.find().toArray();
       res.send(result);
     });
+
 
     // await client.connect();
     // Send a ping to confirm a successful connection
