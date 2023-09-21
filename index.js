@@ -76,8 +76,7 @@ async function run() {
     const blogsCollection = client
       .db("resumeBuilderPortal")
       .collection("blogs");
-
-    //jwt
+//jwt
     app.post("/jwt",(req,res)=>{
       const user=req.body
       console.log(user)
@@ -224,7 +223,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/blogs/:id", async (req, res) => {
+    app.get("/blogs/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const blogData = await blogsCollection.findOne(query);
@@ -372,6 +371,16 @@ async function run() {
       const query = { email: email };
       const result = await paymentCollection.find(query).toArray();
       res.send(result);
+    });
+
+    app.get("/payment/:email",  async (req, res) => {
+      console.log(req.params.email);
+      const email = req.params.email;
+      console.log(email);
+      const query = { email: email };
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+      console.log(result);
     });
 
     //Payment card api
