@@ -29,7 +29,7 @@ const verifyJWT = (req, res, next) => {
       .status(401)
       .send({ error: true, message: "unauthorized access" });
   }
-  const token = authorization.split(" ")[1];
+  const token = authorization.split(" ")[20];
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
     if (err) {
       return res
@@ -229,7 +229,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/blogs/:id", async (req, res) => {
+    app.get("/blogs/:id", verifyJWT, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const blogData = await blogsCollection.findOne(query);
@@ -377,6 +377,16 @@ async function run() {
       const query = { email: email };
       const result = await paymentCollection.find(query).toArray();
       res.send(result);
+    });
+
+    app.get("/payment/:email",  async (req, res) => {
+      console.log(req.params.email);
+      const email = req.params.email;
+      console.log(email);
+      const query = { email: email };
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+      console.log(result);
     });
 
     //Payment card api
