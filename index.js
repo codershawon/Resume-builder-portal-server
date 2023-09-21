@@ -9,37 +9,34 @@ const server = http.createServer(app);
 require("dotenv").config();
 const stripe = require("stripe")(process.env.PAYMENT_SECRET_KEY);
 const port = process.env.PORT || 4000;
-
 //middleware
 app.use(cors());
 app.use(express.json());
 
+
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5175",
+    origin: "http://localhost:5173",
     methods: ["GET", "POST"],
   },
 });
 
 //Start JWT verification
-const verifyJWT = (req, res, next) => {
-  const authorization = req.headers.authorization;
-  if (!authorization) {
-    return res
-      .status(401)
-      .send({ error: true, message: "unauthorized access" });
+const verifyJWT=(req,res,next)=>{
+  const authorization=req.headers.authorization
+
+  if(!authorization){
+    return res.status(401).send({error:true, message:"unauthorized access"})
   }
-  const token = authorization.split(" ")[20];
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-    if (err) {
-      return res
-        .status(401)
-        .send({ error: true, message: "unauthorized access" });
+  const token=authorization.split(" ")[1]
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET,(error,decoded)=>{
+    if(error){
+      return res.status(403).send({error:true, message:"unauthorized access"})
     }
-    req.decoded = decoded;
-    next();
-  });
-};
+    req.decoded=decoded
+    next()
+  })
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.5abjn4e.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -72,24 +69,21 @@ async function run() {
       .collection("resume");
     const cartsCollection = client
       .db("resumeBuilderPortal")
-      .collection("carts"); //Created by Kabir
+      .collection("carts"); 
     const paymentCollection = client
       .db("resumeBuilderPortal")
-      .collection("payments"); //Created by Kabir
+      .collection("payments"); 
     const blogsCollection = client
       .db("resumeBuilderPortal")
       .collection("blogs");
-
-    //jwt
-    app.post("/jwt", (req, res) => {
-      const user = req.body;
-      console.log(user);
-      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "1h",
-      });
-      console.log(token);
-      res.send({ token });
-    });
+//jwt
+    app.post("/jwt",(req,res)=>{
+      const user=req.body
+      console.log(user)
+      const token=jwt.sign(user, process.env.ACCESS_TOKEN_SECRET,{ expiresIn: "1h"})
+      console.log(token)
+      res.send({token})
+    })
 
     // socket.io connection
     io.on("connection", (socket) => {
