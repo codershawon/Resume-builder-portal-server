@@ -10,7 +10,7 @@ const port = process.env.PORT || 4000;
 //middleware
 app.use(cors());
 app.use(express.json());
-// comment 
+//   comment 
 
 //Start JWT verification
 const verifyJWT = (req, res, next) => {
