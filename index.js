@@ -78,7 +78,7 @@ async function run() {
       .collection("blogs");
 //jwt
     app.post("/jwt",(req,res)=>{
-      const user=req.body
+      const user=req?.body
       console.log(user)
       const token=jwt.sign(user, process.env.ACCESS_TOKEN_SECRET,{ expiresIn: "1h"})
       console.log(token)
@@ -223,7 +223,7 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/blogs/:id", verifyJWT, async (req, res) => {
+    app.get("/blogs/:id",  async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const blogData = await blogsCollection.findOne(query);
